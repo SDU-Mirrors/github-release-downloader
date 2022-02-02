@@ -8,9 +8,7 @@ import yaml
 
 from github import Repo
 from http_provider import download_file, download_file_with_retry
-
-NAME = 'github-release-downloader'
-VERSION = 'v0.1'
+from constant import NAME, VERSION
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)

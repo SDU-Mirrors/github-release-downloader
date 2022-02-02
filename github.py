@@ -6,6 +6,7 @@ import json
 from typing import List, Optional, Any
 from urllib3 import HTTPResponse
 from http_provider import http, check_http_code
+from constant import UA_NAME
 
 
 def github_api_get_json(url: str) -> Any:
@@ -14,6 +15,7 @@ def github_api_get_json(url: str) -> Any:
         url,
         headers={
             'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': UA_NAME,
         }
     )
     check_http_code(resp, url)
