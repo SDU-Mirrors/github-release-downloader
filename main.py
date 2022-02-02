@@ -79,7 +79,8 @@ if __name__ == '__main__':
 
             # clean up old versions
             if clean_up:
-                shutil.rmtree(repo_current_dir)
+                if pathlib.Path(repo_current_dir).exists():
+                    shutil.rmtree(repo_current_dir)
 
             pathlib.Path(repo_current_dir).mkdir(parents=True, exist_ok=True)
             shutil.move(artifact_incoming_dir, repo_current_dir)
