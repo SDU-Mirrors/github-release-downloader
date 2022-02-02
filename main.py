@@ -52,6 +52,8 @@ if __name__ == '__main__':
     repos_failed = []
     for repo in repos:
         try:
+            repo_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo
+
             artifacts = repo.get_latest_artifacts()
             artifact_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo + '/' + artifacts.tag_name
             if pathlib.Path(artifact_current_dir).exists():
@@ -67,11 +69,10 @@ if __name__ == '__main__':
                 download_file_with_retry(artifact.url, artifact_filepath, artifact.size)
 
             if clean_up:
-                repo_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo
                 shutil.rmtree(repo_current_dir)
 
-            pathlib.Path(artifact_current_dir).mkdir(parents=True, exist_ok=True)
-            shutil.move(artifact_incoming_dir, artifact_current_dir)
+            pathlib.Path(repo_current_dir).mkdir(parents=True, exist_ok=True)
+            shutil.move(artifact_incoming_dir, repo_current_dir)
 
             repos_succeed.append(repo)
         except Exception as e:
