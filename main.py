@@ -17,6 +17,7 @@ if __name__ == '__main__':
     arg.add_argument('--repo-file', dest='repo_file', default='./repos.yaml', type=str, help='the path to a repo file')
     arg.add_argument('--base-dir', dest='base_dir', default='./srv', type=str, help='the path to the base dir')
     arg.add_argument('-v', '--version', dest='version', action="store_true", help='standalone: show the version')
+    arg.add_argument('--clean-up', dest='clean_up', action="store_true", help='whether to delete old artifacts or not')
     args = arg.parse_args()
     if args.version:
         print(NAME)
@@ -27,6 +28,7 @@ if __name__ == '__main__':
     base_dir = args.base_dir
     current_dir = base_dir + '/current'
     incoming_dir = base_dir + '/incoming'
+    clean_up = args.clean_up
 
     with open(repo_file, "r") as stream:
         repo_yaml = yaml.safe_load(stream)
@@ -64,8 +66,11 @@ if __name__ == '__main__':
                 artifact_filepath = artifact_incoming_dir + '/' + artifact.name
                 download_file_with_retry(artifact.url, artifact_filepath, artifact.size)
 
-            # if pathlib.Path(artifact_current_dir).exists():
-            #     shutil.rmtree(artifact_current_dir)
+            if clean_up:
+                repo_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo
+                shutil.rmtree(repo_current_dir)
+
+            pathlib.Path(artifact_current_dir).mkdir(parents=True, exist_ok=True)
             shutil.move(artifact_incoming_dir, artifact_current_dir)
 
             repos_succeed.append(repo)
