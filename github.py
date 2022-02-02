@@ -63,7 +63,7 @@ class Repo:
             ret += 'The license is available at {}. '.format(resp_json['license']['url'])
         else:
             ret += '. '
-        ret += 'The source code is available at {}. '.format(resp_json['url'])
+        ret += 'The source code is available at {}. '.format(resp_json['html_url'])
         return ret
 
     def get_latest_artifacts(self) -> Artifacts:
