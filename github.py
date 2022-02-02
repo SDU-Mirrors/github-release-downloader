@@ -3,9 +3,21 @@ from __future__ import annotations
 import logging
 import re
 import json
-from typing import List, Optional
+from typing import List, Optional, Any
 from urllib3 import HTTPResponse
 from http_provider import http, check_http_code
+
+
+def github_api_get_json(url: str) -> Any:
+    resp: HTTPResponse = http.request(
+        'GET',
+        url,
+        headers={
+            'Accept': 'application/vnd.github.v3+json',
+        }
+    )
+    check_http_code(resp, url)
+    return json.loads(resp.data)
 
 
 class Artifacts:
@@ -37,19 +49,25 @@ class Repo:
         assert len(result) == 2
         return Repo(result[0], result[1])
 
+    def get_repo_info(self) -> str:
+        logging.info('Fetching information of repo {}/{}'.format(self.owner, self.repo))
+        url = 'https://api.github.com/repos/{}/{}'.format(self.owner, self.repo)
+        resp_json = github_api_get_json(url)
+
+        ret = 'This site distributes {}'.format(resp_json['full_name'])
+        license_known = resp_json['license'] is not None
+        if license_known:
+            ret += ' under the term of {}. '.format(resp_json['license']['name'])
+            ret += 'The license is available at {}. '.format(resp_json['license']['url'])
+        else:
+            ret += '. '
+        ret += 'The source code is available at {}. '.format(resp_json['url'])
+        return ret
+
     def get_latest_artifacts(self) -> Artifacts:
         logging.info('Fetching latest release of repo {}/{}'.format(self.owner, self.repo))
         url = 'https://api.github.com/repos/{}/{}/releases/latest'.format(self.owner, self.repo)
-        resp: HTTPResponse = http.request(
-            'GET',
-            url,
-            headers={
-                'Accept': 'application/vnd.github.v3+json',
-            }
-        )
-        check_http_code(resp, url)
-
-        resp_json = json.loads(resp.data)
+        resp_json = github_api_get_json(url)
         tag_name = resp_json['tag_name']
         assets = resp_json['assets']
         logging.info('{} asserts available in repo {}/{}'.format(len(assets), self.owner, self.repo))

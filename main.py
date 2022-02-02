@@ -56,6 +56,8 @@ if __name__ == '__main__':
         try:
             repo_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo
 
+            repo_info_str = repo.get_repo_info()
+
             artifacts = repo.get_latest_artifacts()
             artifact_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo + '/' + artifacts.tag_name
             if pathlib.Path(artifact_current_dir).exists():
@@ -66,10 +68,16 @@ if __name__ == '__main__':
             artifact_incoming_dir = incoming_dir + '/' + repo.owner + '_' + repo.repo + '/' + artifacts.tag_name
             pathlib.Path(artifact_incoming_dir).mkdir(parents=True, exist_ok=True)
 
+            # download artifacts
             for artifact in artifacts.artifacts:
                 artifact_filepath = artifact_incoming_dir + '/' + artifact.name
                 download_file_with_retry(artifact.url, artifact_filepath, artifact.size)
 
+            # write readme file
+            with open(artifact_incoming_dir + '/' + 'readme.txt', 'w') as stream:
+                stream.write(repo_info_str)
+
+            # clean up old versions
             if clean_up:
                 shutil.rmtree(repo_current_dir)
 
