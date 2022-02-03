@@ -58,7 +58,7 @@ class Repo:
 
         ret = 'This site distributes {}'.format(resp_json['full_name'])
         if resp_json['license'] is not None and resp_json['license']['url'] is not None:
-            ret += ' under the term of {}. '.format(resp_json['license']['name'])
+            ret += ' under the terms of {}. '.format(resp_json['license']['name'])
         else:
             ret += '. '
         ret += 'The source code is available at {}. '.format(resp_json['html_url'])
