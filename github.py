@@ -6,7 +6,7 @@ import json
 from typing import List, Optional, Any
 from urllib3 import HTTPResponse
 from http_provider import http, check_http_code
-from constant import UA_NAME
+from constant import UA_NAME, FULL_NAME, REPO_URL
 
 
 def github_api_get_json(url: str) -> Any:
@@ -58,12 +58,12 @@ class Repo:
 
         ret = 'This site distributes {}'.format(resp_json['full_name'])
         license_known = resp_json['license'] is not None
-        if license_known:
+        if resp_json['license'] is not None and resp_json['license']['url'] is not None:
             ret += ' under the term of {}. '.format(resp_json['license']['name'])
-            ret += 'The license is available at {}. '.format(resp_json['license']['url'])
         else:
             ret += '. '
         ret += 'The source code is available at {}. '.format(resp_json['html_url'])
+        ret += 'This mirror is powered by {}, at {}.'.format(FULL_NAME, REPO_URL)
         return ret
 
     def get_latest_artifacts(self) -> Artifacts:
