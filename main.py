@@ -8,7 +8,7 @@ import yaml
 
 from github import Repo
 from http_provider import download_file, download_file_with_retry
-from constant import NAME, VERSION
+from constant import FULL_NAME, VERSION, REPO_URL
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
@@ -16,12 +16,13 @@ if __name__ == '__main__':
     arg = argparse.ArgumentParser()
     arg.add_argument('--repo-file', dest='repo_file', default='./repos.yaml', type=str, help='the path to a repo file')
     arg.add_argument('--base-dir', dest='base_dir', default='./srv', type=str, help='the path to the base dir')
-    arg.add_argument('-v', '--version', dest='version', action="store_true", help='standalone: show the version')
+    arg.add_argument('-v', '--version', dest='version', action="store_true", help='show the version and exits')
     arg.add_argument('--clean-up', dest='clean_up', action="store_true", help='whether to delete old artifacts or not')
     args = arg.parse_args()
     if args.version:
-        print(NAME)
+        print(FULL_NAME)
         print(VERSION)
+        print(REPO_URL)
         exit()
 
     repo_file = args.repo_file
