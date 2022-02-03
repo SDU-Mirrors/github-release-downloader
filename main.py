@@ -89,7 +89,7 @@ if __name__ == '__main__':
             repos_failed.append(repo)
             logging.warning(e)
 
-    print('Summary: {} succeed, {} skipped, {} repos failed.'.format(
+    print('Summary: {} success, {} skipped, {} failed.'.format(
         len(repos_succeed), len(repos_skipped), len(repos_failed)))
     for repo in repos_succeed:
         print('success - {}'.format(repo))
