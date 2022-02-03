@@ -7,7 +7,7 @@ import shutil
 import yaml
 
 from github import Repo
-from http_provider import download_file, download_file_with_retry
+from http_provider import download_file_with_retry
 from constant import FULL_NAME, VERSION, REPO_URL
 
 if __name__ == '__main__':
