@@ -7,6 +7,7 @@ from urllib3 import PoolManager, HTTPResponse
 http: PoolManager = PoolManager(
     retries=False,
     timeout=urllib3.util.Timeout(connect=9, read=120),
+    block=True,
 )
 chunk_size = 1048576
 
