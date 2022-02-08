@@ -1,5 +1,6 @@
+import contextlib
 import logging
-from typing import Optional
+from typing import Optional, Any
 import urllib3
 from urllib3 import PoolManager, HTTPResponse
 
@@ -10,9 +11,18 @@ http: PoolManager = PoolManager(
 chunk_size = 1048576
 
 
+@contextlib.contextmanager
+def urllib3_http_request(http: urllib3.PoolManager, *args: Any, **kwargs: Any):
+    r = http.request(*args, **kwargs)
+    try:
+        yield r
+    finally:
+        r.release_conn()
+
+
 def download_file(url: str, filepath: str, filesize: Optional[int] = None):
     logging.info('Downloading file {}'.format(url))
-    with http.request('GET', url, preload_content=False) as r:
+    with urllib3_http_request(http, 'GET', url, preload_content=False) as r:
         with open(filepath, 'wb') as f:
             content_len = int(r.headers['Content-length'])
             downloaded_size = 0
@@ -25,7 +35,6 @@ def download_file(url: str, filepath: str, filesize: Optional[int] = None):
                     downloaded_size / content_len),
                 )
         check_http_code(r, url)
-        r.release_conn()
         if filesize is not None and filesize != downloaded_size:
             raise Exception('File length mismatch. Got {}, but {} is expected.'.format(downloaded_size, filesize))
 
