@@ -5,12 +5,14 @@ import re
 import json
 from typing import List, Optional, Any
 from urllib3 import HTTPResponse
-from http_provider import http, check_http_code
+from http_provider import urllib3_http_request_auto, check_http_code
 from constant import UA_NAME, FULL_NAME, REPO_URL
+
+GITHUB_API_SERVER = 'api.github.com'
 
 
 def github_api_get_json(url: str) -> Any:
-    resp: HTTPResponse = http.request(
+    resp: HTTPResponse = urllib3_http_request_auto(
         'GET',
         url,
         headers={
@@ -53,7 +55,7 @@ class Repo:
 
     def get_repo_info(self) -> str:
         logging.info('Fetching information of repo {}/{}'.format(self.owner, self.repo))
-        url = 'https://api.github.com/repos/{}/{}'.format(self.owner, self.repo)
+        url = 'https://{}/repos/{}/{}'.format(GITHUB_API_SERVER, self.owner, self.repo)
         resp_json = github_api_get_json(url)
 
         ret = 'This site distributes {}'.format(resp_json['full_name'])
@@ -67,7 +69,7 @@ class Repo:
 
     def get_latest_artifacts(self) -> Artifacts:
         logging.info('Fetching latest release of repo {}/{}'.format(self.owner, self.repo))
-        url = 'https://api.github.com/repos/{}/{}/releases/latest'.format(self.owner, self.repo)
+        url = 'https://{}/repos/{}/{}/releases/latest'.format(GITHUB_API_SERVER, self.owner, self.repo)
         resp_json = github_api_get_json(url)
         tag_name = resp_json['tag_name']
         assets = resp_json['assets']

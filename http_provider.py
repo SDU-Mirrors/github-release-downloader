@@ -1,20 +1,55 @@
 import contextlib
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, Dict, Set, Union
 import urllib3
-from urllib3 import PoolManager, HTTPResponse
+from urllib3 import HTTPResponse
+from urllib.parse import urlparse
 
-http: PoolManager = PoolManager(
+Pool = Union[urllib3.HTTPSConnectionPool, urllib3.PoolManager]
+
+http: Pool = urllib3.PoolManager(
     retries=False,
     timeout=urllib3.util.Timeout(connect=9, read=120),
     block=True,
 )
 chunk_size = 1048576
 
+custom_sni_pools: Dict[str, Pool] = {}
+no_sni_domains: Set[str] = {'api.github.com', 'github.com'}
+
+
+def new_no_sni_pool(domain: str) -> Pool:
+    return urllib3.HTTPSConnectionPool(domain, server_hostname=None, assert_hostname=domain)
+
+
+def get_no_sni_pool(domain: str) -> Pool:
+    if domain not in custom_sni_pools:
+        custom_sni_pools[domain] = new_no_sni_pool(domain)
+    return custom_sni_pools[domain]
+
+
+def urllib3_http_request_auto(*args: Any, **kwargs: Any):
+    domain = ''
+    if len(args) > 1:
+        url = args[1]
+        domain = urlparse(url).netloc
+
+    if domain in no_sni_domains:
+        pool = get_no_sni_pool(domain)
+        kwargs['assert_same_host'] = False
+        headers = kwargs.get('headers', dict())
+        headers['Host'] = domain
+        kwargs['headers'] = headers
+    else:
+        pool = http
+
+    r = pool.request(*args, **kwargs)
+    return r
+
 
 @contextlib.contextmanager
-def urllib3_http_request(http: urllib3.PoolManager, *args: Any, **kwargs: Any):
-    r = http.request(*args, **kwargs)
+def urllib3_http_request_auto_managed(*args: Any, **kwargs: Any):
+    r = urllib3_http_request_auto(*args, **kwargs)
     try:
         yield r
     finally:
@@ -23,7 +58,7 @@ def urllib3_http_request(http: urllib3.PoolManager, *args: Any, **kwargs: Any):
 
 def download_file(url: str, filepath: str, filesize: Optional[int] = None):
     logging.info('Downloading file {}'.format(url))
-    with urllib3_http_request(http, 'GET', url, preload_content=False) as r:
+    with urllib3_http_request_auto_managed('GET', url, preload_content=False) as r:
         with open(filepath, 'wb') as f:
             content_len = int(r.headers['Content-length'])
             downloaded_size = 0
