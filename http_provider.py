@@ -4,6 +4,8 @@ from typing import Optional, Any
 import urllib3
 from urllib3 import PoolManager, HTTPResponse
 
+from constant import UA_NAME
+
 http: PoolManager = PoolManager(
     retries=False,
     timeout=urllib3.util.Timeout(connect=9, read=120),
@@ -23,7 +25,7 @@ def urllib3_http_request(http: urllib3.PoolManager, *args: Any, **kwargs: Any):
 
 def download_file(url: str, filepath: str, filesize: Optional[int] = None):
     logging.info('Downloading file {}'.format(url))
-    with urllib3_http_request(http, 'GET', url, preload_content=False) as r:
+    with urllib3_http_request(http, 'GET', url, preload_content=False, headers={'User-Agent': UA_NAME}) as r:
         with open(filepath, 'wb') as f:
             content_len = int(r.headers['Content-length'])
             downloaded_size = 0
