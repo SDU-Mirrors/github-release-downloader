@@ -33,6 +33,7 @@ def get_no_sni_pool(domain: str) -> Pool:
 
 
 def urllib3_http_request_auto(*args: Any, **kwargs: Any):
+    logging.debug('test{}{}'.format(args, kwargs))
     assert (len(args) > 1)
     url = args[1]
     domain = urlparse(url).netloc
