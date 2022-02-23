@@ -33,10 +33,9 @@ def get_no_sni_pool(domain: str) -> Pool:
 
 
 def urllib3_http_request_auto(*args: Any, **kwargs: Any):
-    domain = ''
-    if len(args) > 1:
-        url = args[1]
-        domain = urlparse(url).netloc
+    assert (len(args) > 1)
+    url = args[1]
+    domain = urlparse(url).netloc
 
     if domain in no_sni_domains:
         pool = get_no_sni_pool(domain)
