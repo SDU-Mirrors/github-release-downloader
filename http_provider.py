@@ -33,7 +33,6 @@ def initialize():
         logging.info('Proxy server is set to {}.'.format(proxy))
         http = ProxyManager(
             proxy_url=proxy,
-            use_forwarding_for_https=True,
             retries=False,
             timeout=urllib3.util.Timeout(connect=9, read=120),
             block=True,
