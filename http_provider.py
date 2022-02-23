@@ -51,7 +51,6 @@ def urllib3_http_request_auto(*args: Any, **kwargs: Any):
         r = pool.request(*args, **kwargs)
     except HostChangedError as e:
         logging.info('Redirect to {}'.format(e.url))
-        r.release_conn()
         # TODO deal with infinite loop
         new_args = list(args)
         new_args[1] = e.url
