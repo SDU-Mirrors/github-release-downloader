@@ -5,6 +5,10 @@ import urllib3
 from urllib3 import HTTPResponse
 from urllib.parse import urlparse
 
+from urllib3.exceptions import HostChangedError
+
+from constant import UA_NAME
+
 Pool = Union[urllib3.HTTPSConnectionPool, urllib3.PoolManager]
 
 http: Pool = urllib3.PoolManager(
@@ -58,7 +62,7 @@ def urllib3_http_request_auto_managed(*args: Any, **kwargs: Any):
 
 def download_file(url: str, filepath: str, filesize: Optional[int] = None):
     logging.info('Downloading file {}'.format(url))
-    with urllib3_http_request_auto_managed('GET', url, preload_content=False) as r:
+    with urllib3_http_request_auto_managed('GET', url, preload_content=False, headers={'User-Agent': UA_NAME}) as r:
         with open(filepath, 'wb') as f:
             content_len = int(r.headers['Content-length'])
             downloaded_size = 0
