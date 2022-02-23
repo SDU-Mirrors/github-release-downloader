@@ -32,31 +32,26 @@ def get_no_sni_pool(domain: str) -> Pool:
     return custom_sni_pools[domain]
 
 
-def urllib3_http_request_auto(*args: Any, **kwargs: Any):
-    logging.debug('test{}{}'.format(args, kwargs))
-    assert (len(args) > 1)
-    url = args[1]
+def urllib3_http_request_auto(method, url, fields=None, headers=None, **urlopen_kw):
     domain = urlparse(url).netloc
 
-    kwargs['assert_same_host'] = True
-    headers = kwargs.get('headers', dict())
+    urlopen_kw['assert_same_host'] = True
+    headers = headers or dict()
     headers['Host'] = domain
-    kwargs['headers'] = headers
-    
+    urlopen_kw['headers'] = headers
+
     if domain in no_sni_domains:
         pool = get_no_sni_pool(domain)
     else:
         pool = http
 
     try:
-        r = pool.request(*args, **kwargs)
+        r = pool.request(method, url, fields=fields, headers=headers, **urlopen_kw)
     except HostChangedError as e:
         logging.info('Redirect to {}'.format(e.url))
         # TODO deal with infinite loop
-        new_args = list(args)
-        new_args[1] = e.url
-        args = tuple(new_args)
-        r = urllib3_http_request_auto(*args, **kwargs)
+        url = e.url
+        r = urllib3_http_request_auto(method, url, fields=fields, headers=headers, **urlopen_kw)
     return r
 
 
