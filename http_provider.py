@@ -38,12 +38,13 @@ def urllib3_http_request_auto(*args: Any, **kwargs: Any):
     url = args[1]
     domain = urlparse(url).netloc
 
+    kwargs['assert_same_host'] = True
+    headers = kwargs.get('headers', dict())
+    headers['Host'] = domain
+    kwargs['headers'] = headers
+    
     if domain in no_sni_domains:
         pool = get_no_sni_pool(domain)
-        kwargs['assert_same_host'] = True
-        headers = kwargs.get('headers', dict())
-        headers['Host'] = domain
-        kwargs['headers'] = headers
     else:
         pool = http
 
