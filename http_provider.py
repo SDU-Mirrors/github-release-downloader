@@ -42,8 +42,10 @@ def urllib3_http_request_auto(method, url, fields=None, headers=None, **urlopen_
 
     if domain in no_sni_domains:
         pool = get_no_sni_pool(domain)
+        logging.debug('use no-sni pool')
     else:
         pool = http
+        logging.debug('use normal pool')
 
     try:
         r = pool.request(method, url, fields=fields, headers=headers, **urlopen_kw)
