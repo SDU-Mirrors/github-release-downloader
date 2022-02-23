@@ -30,6 +30,7 @@ def initialize():
             block=True,
         )
     else:
+        logging.info('Proxy server is set to {}.'.format(proxy))
         http = ProxyManager(
             proxy_url=proxy,
             retries=False,
