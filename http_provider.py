@@ -11,6 +11,15 @@ http: PoolManager = PoolManager()
 chunk_size = 1048576
 
 
+def get_proxy() -> Optional[str]:
+    proxies = getproxies()
+    if 'all' in proxies.keys():
+        return proxies['all']
+    if 'http' in proxies.keys():
+        return proxies['http']
+    return None
+
+
 def initialize():
     global http
     proxy = get_proxy()
@@ -30,15 +39,6 @@ def initialize():
 
 
 initialize()
-
-
-def get_proxy() -> Optional[str]:
-    proxies = getproxies()
-    if 'all' in proxies.keys():
-        return proxies['all']
-    if 'http' in proxies.keys():
-        return proxies['http']
-    return None
 
 
 @contextlib.contextmanager
