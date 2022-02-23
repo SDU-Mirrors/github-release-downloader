@@ -11,7 +11,7 @@ from http_provider import download_file_with_retry
 from constant import FULL_NAME, VERSION, REPO_URL
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     arg = argparse.ArgumentParser()
     arg.add_argument('--repo-file', dest='repo_file', default='./repos.yaml', type=str, help='the path to a repo file')
