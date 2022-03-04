@@ -7,6 +7,8 @@ from urllib.request import getproxies
 
 from constant import UA_NAME
 
+logger = logging.getLogger(__name__)
+
 http: PoolManager = PoolManager()
 chunk_size = 1048576
 
@@ -30,7 +32,7 @@ def initialize():
             block=True,
         )
     else:
-        logging.info('Proxy server is set to {}.'.format(proxy))
+        logger.info('Proxy server is set to {}.'.format(proxy))
         http = ProxyManager(
             proxy_url=proxy,
             retries=False,
@@ -52,16 +54,16 @@ def urllib3_http_request(http: urllib3.PoolManager, *args: Any, **kwargs: Any):
 
 
 def download_file(url: str, filepath: str, filesize: Optional[int] = None):
-    logging.info('Downloading file {}'.format(url))
+    logger.info('Downloading file {}'.format(url))
     with urllib3_http_request(http, 'GET', url, preload_content=False, headers={'User-Agent': UA_NAME}) as r:
         with open(filepath, 'wb') as f:
             content_len = int(r.headers['Content-length'])
             downloaded_size = 0
-            logging.info('Connecting...')
+            logger.info('Connecting...')
             for chunk in r.stream(chunk_size):
                 downloaded_size += len(chunk)
                 f.write(chunk)
-                logging.info('{:.2f}/{:.2f} MiB, {:.2%}'.format(
+                logger.info('{:.2f}/{:.2f} MiB, {:.2%}'.format(
                     downloaded_size / 1048576, content_len / 1048576,
                     downloaded_size / content_len),
                 )
@@ -76,7 +78,7 @@ def download_file_with_retry(url: str, filepath: str, filesize: Optional[int] = 
             download_file(url, filepath, filesize)
             break
         except Exception as e:
-            logging.warning(e)
+            logger.warning(e)
             if i == retry_time - 1:  # is last loop
                 raise e
 

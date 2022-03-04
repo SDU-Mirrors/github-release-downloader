@@ -8,6 +8,7 @@ from urllib3 import HTTPResponse
 from http_provider import http, check_http_code
 from constant import UA_NAME, FULL_NAME, REPO_URL
 
+logger = logging.getLogger(__name__)
 
 def github_api_get_json(url: str) -> Any:
     resp: HTTPResponse = http.request(
@@ -52,7 +53,7 @@ class Repo:
         return Repo(result[0], result[1])
 
     def get_repo_info(self) -> str:
-        logging.info('Fetching information of repo {}/{}'.format(self.owner, self.repo))
+        logger.info('Fetching information of repo {}/{}'.format(self.owner, self.repo))
         url = 'https://api.github.com/repos/{}/{}'.format(self.owner, self.repo)
         resp_json = github_api_get_json(url)
 
@@ -66,12 +67,12 @@ class Repo:
         return ret
 
     def get_latest_artifacts(self) -> Artifacts:
-        logging.info('Fetching latest release of repo {}/{}'.format(self.owner, self.repo))
+        logger.info('Fetching latest release of repo {}/{}'.format(self.owner, self.repo))
         url = 'https://api.github.com/repos/{}/{}/releases/latest'.format(self.owner, self.repo)
         resp_json = github_api_get_json(url)
         tag_name = resp_json['tag_name']
         assets = resp_json['assets']
-        logging.info('{} asserts available in repo {}/{}'.format(len(assets), self.owner, self.repo))
+        logger.info('{} asserts available in repo {}/{}'.format(len(assets), self.owner, self.repo))
 
         ret_artifacts = []
         for asset in assets:
