@@ -2,16 +2,44 @@ import contextlib
 import logging
 from typing import Optional, Any
 import urllib3
-from urllib3 import PoolManager, HTTPResponse
+from urllib3 import PoolManager, HTTPResponse, ProxyManager
+from urllib.request import getproxies
 
 from constant import UA_NAME
 
-http: PoolManager = PoolManager(
-    retries=False,
-    timeout=urllib3.util.Timeout(connect=9, read=120),
-    block=True,
-)
+http: PoolManager = PoolManager()
 chunk_size = 1048576
+
+
+def get_proxy() -> Optional[str]:
+    proxies = getproxies()
+    if 'all' in proxies.keys():
+        return proxies['all']
+    if 'http' in proxies.keys():
+        return proxies['http']
+    return None
+
+
+def initialize():
+    global http
+    proxy = get_proxy()
+    if proxy is None:
+        http = PoolManager(
+            retries=False,
+            timeout=urllib3.util.Timeout(connect=9, read=120),
+            block=True,
+        )
+    else:
+        logging.info('Proxy server is set to {}.'.format(proxy))
+        http = ProxyManager(
+            proxy_url=proxy,
+            retries=False,
+            timeout=urllib3.util.Timeout(connect=9, read=120),
+            block=True,
+        )
+
+
+initialize()
 
 
 @contextlib.contextmanager
