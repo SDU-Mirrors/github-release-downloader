@@ -16,6 +16,9 @@ options:
   --clean-up            whether to delete old artifacts or not
 ```
 
+### Use http proxy
+Set the environment variable `HTTP_PROXY` to an http proxy.
+
 Note: [A certain bug of Python](https://bugs.python.org/issue22708) might causes issues with proxies. [This PR](https://github.com/python/cpython/pull/8305) fixes the bug but it has not been merged yet.
 
 ## License
