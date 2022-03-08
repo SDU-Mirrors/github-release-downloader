@@ -3,22 +3,25 @@ from __future__ import annotations
 import logging
 import re
 import json
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
+import urllib3
 from urllib3 import HTTPResponse
+
 from http_provider import http, check_http_code
-from constant import UA_NAME, FULL_NAME, REPO_URL
+from constant import FULL_NAME, REPO_URL
 
 logger = logging.getLogger(__name__)
 
-def github_api_get_json(url: str) -> Any:
-    resp: HTTPResponse = http.request(
-        'GET',
-        url,
-        headers={
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': UA_NAME,
-        }
+
+def github_api_get_json(url: str, option: Optional[APIOption] = None) -> Any:
+    headers = urllib3.make_headers(
+        basic_auth=option.basic_auth if option else None,
+        user_agent=option.user_agent if option else None,
+        accept_encoding='application/vnd.github.v3+json',
     )
+    resp: HTTPResponse = http.request('GET', url, headers=headers)
+    if resp.status == 403:
+        logger.warning('HTTP 403. Message: {}'.format(json.dumps(json.loads(resp.data))))
     check_http_code(resp, url)
     return json.loads(resp.data)
 
@@ -52,10 +55,10 @@ class Repo:
         assert len(result) == 2
         return Repo(result[0], result[1])
 
-    def get_repo_info(self) -> str:
+    def get_repo_info(self, option: Optional[APIOption] = None) -> str:
         logger.info('Fetching information of repo {}/{}'.format(self.owner, self.repo))
         url = 'https://api.github.com/repos/{}/{}'.format(self.owner, self.repo)
-        resp_json = github_api_get_json(url)
+        resp_json = github_api_get_json(url, option)
 
         ret = 'This site distributes {}'.format(resp_json['full_name'])
         if resp_json['license'] is not None and resp_json['license']['url'] is not None:
@@ -66,10 +69,10 @@ class Repo:
         ret += 'This mirror is powered by {}, at {}.'.format(FULL_NAME, REPO_URL)
         return ret
 
-    def get_latest_artifacts(self) -> Artifacts:
+    def get_latest_artifacts(self, option: Optional[APIOption] = None) -> Artifacts:
         logger.info('Fetching latest release of repo {}/{}'.format(self.owner, self.repo))
         url = 'https://api.github.com/repos/{}/{}/releases/latest'.format(self.owner, self.repo)
-        resp_json = github_api_get_json(url)
+        resp_json = github_api_get_json(url, option)
         tag_name = resp_json['tag_name']
         assets = resp_json['assets']
         logger.info('{} asserts available in repo {}/{}'.format(len(assets), self.owner, self.repo))
@@ -82,3 +85,9 @@ class Repo:
             ret_artifacts.append(Artifact(asset_name, asset_url, asset_size))
 
         return Artifacts(tag_name, ret_artifacts)
+
+
+class APIOption:
+    def __init__(self):
+        self.basic_auth: Optional[str] = None
+        self.user_agent: Optional[str] = None

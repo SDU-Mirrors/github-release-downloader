@@ -5,10 +5,12 @@ import logging
 import pathlib
 import shutil
 import yaml
+import os
 
+import github
 from github import Repo
 from http_provider import download_file_with_retry
-from constant import FULL_NAME, VERSION, REPO_URL
+from constant import FULL_NAME, VERSION, REPO_URL, UA_NAME
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
@@ -16,7 +18,7 @@ if __name__ == '__main__':
     arg = argparse.ArgumentParser()
     arg.add_argument('--repo-file', dest='repo_file', default='./repos.yaml', type=str, help='the path to a repo file')
     arg.add_argument('--base-dir', dest='base_dir', default='./srv', type=str, help='the path to the base dir')
-    arg.add_argument('-v', '--version', dest='version', action="store_true", help='show the version and exits')
+    arg.add_argument('-v', '--version', dest='version', action="store_true", help='show the version and exit')
     arg.add_argument('--clean-up', dest='clean_up', action="store_true", help='whether to delete old artifacts or not')
     args = arg.parse_args()
     if args.version:
@@ -24,6 +26,15 @@ if __name__ == '__main__':
         print(VERSION)
         print(REPO_URL)
         exit()
+
+    # Load options for GitHub API
+    github_option = github.APIOption()
+    github_option.basic_auth = os.environ.get('HTTP_BASIC_AUTH', None)
+    github_option.user_agent = UA_NAME
+    if not github_option.basic_auth:
+        logging.warning('No credentials found. Please specify a credential via HTTP_BASIC_AUTH environment.')
+    else:
+        logging.info('Successfully loaded the GitHub API credential.')
 
     repo_file = args.repo_file
     base_dir = args.base_dir
@@ -55,9 +66,9 @@ if __name__ == '__main__':
         try:
             repo_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo
 
-            repo_info_str = repo.get_repo_info()
+            repo_info_str = repo.get_repo_info(github_option)
 
-            artifacts = repo.get_latest_artifacts()
+            artifacts = repo.get_latest_artifacts(github_option)
             artifact_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo + '/' + artifacts.tag_name
             if pathlib.Path(artifact_current_dir).exists():
                 logging.info('Repo {} with tag {} already exists. Skip.'.format(repo, artifacts.tag_name))
