@@ -20,7 +20,7 @@ optional arguments:
 ### Specify a GitHub credential
 Set the environment variable `HTTP_BASIC_AUTH` in the form of `username:token`.
 
-See also [personal access tokens](https://docs.github.com/cn/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
+See also [personal access tokens](https://docs.github.com/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
 Generally, you should only grant the `public_repo` access to the token. 
 
 ### Use http proxy
