@@ -17,7 +17,7 @@ optional arguments:
   --clean-up            whether to delete old artifacts or not
 ```
 
-### Specific a GitHub credential
+### Specify a GitHub credential
 Set the environment variable `HTTP_BASIC_AUTH` in the form of `username:token`.
 
 See also [personal access tokens](https://docs.github.com/cn/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
