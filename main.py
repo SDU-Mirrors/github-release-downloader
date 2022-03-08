@@ -18,7 +18,7 @@ if __name__ == '__main__':
     arg = argparse.ArgumentParser()
     arg.add_argument('--repo-file', dest='repo_file', default='./repos.yaml', type=str, help='the path to a repo file')
     arg.add_argument('--base-dir', dest='base_dir', default='./srv', type=str, help='the path to the base dir')
-    arg.add_argument('-v', '--version', dest='version', action="store_true", help='show the version and exits')
+    arg.add_argument('-v', '--version', dest='version', action="store_true", help='show the version and exit')
     arg.add_argument('--clean-up', dest='clean_up', action="store_true", help='whether to delete old artifacts or not')
     args = arg.parse_args()
     if args.version:
