@@ -24,9 +24,9 @@ See also [personal access tokens](https://docs.github.com/authentication/keeping
 Generally, you should only grant the `public_repo` access to the token. 
 
 ### Use http proxy
-Set the environment variable `HTTP_PROXY` to an http proxy.
+Set the environment variable `HTTP_PROXY` to an HTTP proxy.
 
-Note: [A certain bug of Python](https://github.com/python/cpython/issues/66897) might cause issues with proxies. [This PR](https://github.com/python/cpython/pull/8305) fixes the bug but it has not been merged yet.
+Note: [A certain bug of Python](https://github.com/python/cpython/issues/66897) might cause issues with HTTP proxies, which was later fixed in Python 3.12.
 
 ## License
 
