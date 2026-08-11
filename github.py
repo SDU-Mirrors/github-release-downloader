@@ -57,16 +57,28 @@ def github_api_get_json(url: str) -> Any:
 
 
 class Artifacts:
-    def __init__(self, tag_name: str, artifacts: List[Artifact]):
+    def __init__(self, release_id: int, tag_name: str, artifacts: List[Artifact]):
+        self.release_id = release_id
         self.tag_name = tag_name
         self.artifacts = artifacts
 
 
 class Artifact:
-    def __init__(self, name: str, url: str, size: Optional[int] = None):
+    def __init__(
+        self,
+        asset_id: int,
+        name: str,
+        url: str,
+        size: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        digest: Optional[str] = None,
+    ):
+        self.id = asset_id
         self.name = name
         self.url = url
         self.size = size
+        self.updated_at = updated_at
+        self.digest = digest
 
 
 class Repo:
@@ -103,6 +115,7 @@ class Repo:
         logging.debug('Fetching latest release of repo {}/{}'.format(self.owner, self.repo))
         url = 'https://api.github.com/repos/{}/{}/releases/latest'.format(self.owner, self.repo)
         resp_json = github_api_get_json(url)
+        release_id = resp_json['id']
         tag_name = resp_json['tag_name']
         assets = resp_json['assets']
         logging.debug('{} assets available in repo {}/{} tag {}'.format(
@@ -110,9 +123,19 @@ class Repo:
 
         ret_artifacts = []
         for asset in assets:
+            asset_id = asset['id']
             asset_name = asset['name']
             asset_url = asset['url']
             asset_size = asset['size']
-            ret_artifacts.append(Artifact(asset_name, asset_url, asset_size))
+            asset_updated_at = asset.get('updated_at')
+            asset_digest = asset.get('digest')
+            ret_artifacts.append(Artifact(
+                asset_id,
+                asset_name,
+                asset_url,
+                asset_size,
+                asset_updated_at,
+                asset_digest,
+            ))
 
-        return Artifacts(tag_name, ret_artifacts)
+        return Artifacts(release_id, tag_name, ret_artifacts)

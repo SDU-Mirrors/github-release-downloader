@@ -10,6 +10,13 @@ from dataclasses import dataclass
 from github import Repo, github_api_headers
 from http_provider import download_file_with_retry, format_exception_chain
 from constant import FULL_NAME, VERSION, REPO_URL
+from release_sync import (
+    build_manifest,
+    load_manifest,
+    manifests_match,
+    sync_release_assets,
+    write_manifest_atomic,
+)
 
 
 @dataclass
@@ -42,6 +49,7 @@ if __name__ == '__main__':
     base_dir = args.base_dir
     current_dir = base_dir + '/current'
     incoming_dir = base_dir + '/incoming'
+    state_dir = base_dir + '/.state'
     clean_up = args.clean_up
 
     with open(repo_file, "r") as stream:
@@ -67,55 +75,77 @@ if __name__ == '__main__':
     for repo in repos:
         stage = 'initializing'
         try:
-            repo_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo
+            repo_key = repo.owner + '_' + repo.repo
+            repo_current_dir = pathlib.Path(current_dir) / repo_key
 
             stage = 'fetching repo information'
             repo_info_str = repo.get_repo_info()
 
             stage = 'fetching latest release'
             artifacts = repo.get_latest_artifacts()
-            artifact_current_dir = current_dir + '/' + repo.owner + '_' + repo.repo + '/' + artifacts.tag_name
-            if pathlib.Path(artifact_current_dir).exists():
-                logging.info('Repo {} with tag {} already exists. Skip.'.format(repo, artifacts.tag_name))
-                repos_skipped.append(repo)
-                continue
+            artifact_current_dir = repo_current_dir / artifacts.tag_name
+            is_new_release = not artifact_current_dir.exists()
+            manifest_path = pathlib.Path(state_dir) / repo_key / '{}.json'.format(artifacts.release_id)
 
-            logging.info('Update available: {} -> {} ({} assets)'.format(
+            stage = 'loading release manifest'
+            manifest = load_manifest(manifest_path)
+
+            repo_incoming_dir = pathlib.Path(incoming_dir) / repo_key
+            part_dir = repo_incoming_dir / '.parts' / str(artifacts.release_id)
+            if is_new_release:
+                sync_destination_dir = repo_incoming_dir / '.releases' / str(artifacts.release_id)
+            else:
+                sync_destination_dir = artifact_current_dir
+
+            stage = 'reconciling release assets'
+            logging.info('Reconciling release: {} {} ({} assets)'.format(
                 repo, artifacts.tag_name, len(artifacts.artifacts)))
-
-            stage = 'creating incoming directory'
-            artifact_incoming_dir = incoming_dir + '/' + repo.owner + '_' + repo.repo + '/' + artifacts.tag_name
-            pathlib.Path(artifact_incoming_dir).mkdir(parents=True, exist_ok=True)
-
-            # download artifacts
-            for artifact in artifacts.artifacts:
-                stage = 'downloading asset {}'.format(artifact.name)
-                artifact_filepath = artifact_incoming_dir + '/' + artifact.name
-                logging.info('Downloading asset: {} {} {} ({} bytes)'.format(
-                    repo, artifacts.tag_name, artifact.name, artifact.size))
-                download_file_with_retry(
-                    artifact.url,
-                    artifact_filepath,
-                    artifact.size,
-                    headers=github_api_headers('application/octet-stream'),
-                )
+            stats = sync_release_assets(
+                artifacts,
+                sync_destination_dir,
+                part_dir,
+                manifest,
+                download_file_with_retry,
+                headers=github_api_headers('application/octet-stream'),
+            )
 
             # write readme file
             stage = 'writing readme'
-            with open(artifact_incoming_dir + '/' + 'readme.txt', 'w') as stream:
-                stream.write(repo_info_str)
+            readme_path = sync_destination_dir / 'readme.txt'
+            if is_new_release or not readme_path.exists():
+                with readme_path.open('w') as stream:
+                    stream.write(repo_info_str)
 
-            # clean up old versions
-            if clean_up:
-                stage = 'cleaning old versions'
-                if pathlib.Path(repo_current_dir).exists():
-                    shutil.rmtree(repo_current_dir)
+            if is_new_release:
+                # clean up old versions
+                if clean_up:
+                    stage = 'cleaning old versions'
+                    if repo_current_dir.exists():
+                        shutil.rmtree(repo_current_dir)
 
-            stage = 'moving incoming artifacts into current directory'
-            pathlib.Path(repo_current_dir).mkdir(parents=True, exist_ok=True)
-            shutil.move(artifact_incoming_dir, repo_current_dir)
+                stage = 'moving incoming artifacts into current directory'
+                artifact_current_dir.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(sync_destination_dir), str(artifact_current_dir))
 
-            repos_succeed.append(repo)
+            stage = 'writing release manifest'
+            new_manifest = build_manifest(str(repo), artifacts)
+            if not manifests_match(manifest, new_manifest):
+                write_manifest_atomic(manifest_path, new_manifest)
+
+            logging.info(
+                'Release sync result: {} {} | added: {}, modified: {}, unchanged: {}, preserved: {}'.format(
+                    repo,
+                    artifacts.tag_name,
+                    stats.added,
+                    stats.modified,
+                    stats.unchanged,
+                    stats.preserved,
+                ))
+
+            if is_new_release or stats.changed:
+                repos_succeed.append(repo)
+            else:
+                repos_skipped.append(repo)
         except Exception as e:
             failure = RepoFailure(repo, stage, e)
             repos_failed.append(failure)
