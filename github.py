@@ -1,29 +1,59 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import json
-from typing import List, Optional, Any, Dict
-import urllib3
+from typing import Dict, List, Optional, Any
 from urllib3 import HTTPResponse
-
-from http_provider import http, check_http_code
-from constant import FULL_NAME, REPO_URL
-
-logger = logging.getLogger(__name__)
+from http_provider import http, check_http_code, redirect_statuses, max_redirects
+from constant import UA_NAME, FULL_NAME, REPO_URL
 
 
-def github_api_get_json(url: str, option: Optional[APIOption] = None) -> Any:
-    headers = urllib3.make_headers(
-        basic_auth=option.basic_auth if option else None,
-        user_agent=option.user_agent if option else None,
-        accept_encoding='application/vnd.github.v3+json',
-    )
-    resp: HTTPResponse = http.request('GET', url, headers=headers)
-    if resp.status == 403:
-        logger.warning('HTTP 403. Message: {}'.format(json.dumps(json.loads(resp.data))))
+def github_api_headers(accept: str = 'application/vnd.github.v3+json') -> Dict[str, str]:
+    headers = {
+        'Accept': accept,
+        'User-Agent': UA_NAME,
+    }
+    github_token = os.getenv('GITHUB_TOKEN')
+    if github_token:
+        headers['Authorization'] = 'Bearer {}'.format(github_token)
+    return headers
+
+
+def github_api_get_json(url: str) -> Any:
+    resp = None
+    for redirect_count in range(max_redirects):
+        logging.debug('GET {}'.format(url))
+        resp: HTTPResponse = http.request(
+            'GET',
+            url,
+            headers=github_api_headers(),
+            redirect=False,
+        )
+        if resp.status not in redirect_statuses:
+            break
+
+        redirect_url = resp.headers.get('Location')
+        if redirect_url is None:
+            try:
+                redirect_url = json.loads(resp.data).get('url')
+            except Exception:
+                redirect_url = None
+        if redirect_url is None:
+            break
+
+        logging.debug('GitHub API redirected from {} to {}'.format(url, redirect_url))
+        resp.release_conn()
+        url = redirect_url
+    else:
+        raise Exception('Too many redirects while fetching GitHub API url {}'.format(url))
+
     check_http_code(resp, url)
-    return json.loads(resp.data)
+    try:
+        return json.loads(resp.data)
+    except json.JSONDecodeError as e:
+        raise Exception('Invalid JSON response from {}'.format(url)) from e
 
 
 class Artifacts:
@@ -55,10 +85,10 @@ class Repo:
         assert len(result) == 2
         return Repo(result[0], result[1])
 
-    def get_repo_info(self, option: Optional[APIOption] = None) -> str:
-        logger.info('Fetching information of repo {}/{}'.format(self.owner, self.repo))
+    def get_repo_info(self) -> str:
+        logging.debug('Fetching information of repo {}/{}'.format(self.owner, self.repo))
         url = 'https://api.github.com/repos/{}/{}'.format(self.owner, self.repo)
-        resp_json = github_api_get_json(url, option)
+        resp_json = github_api_get_json(url)
 
         ret = 'This site distributes {}'.format(resp_json['full_name'])
         if resp_json['license'] is not None and resp_json['license']['url'] is not None:
@@ -69,25 +99,20 @@ class Repo:
         ret += 'This mirror is powered by {}, at {}.'.format(FULL_NAME, REPO_URL)
         return ret
 
-    def get_latest_artifacts(self, option: Optional[APIOption] = None) -> Artifacts:
-        logger.info('Fetching latest release of repo {}/{}'.format(self.owner, self.repo))
+    def get_latest_artifacts(self) -> Artifacts:
+        logging.debug('Fetching latest release of repo {}/{}'.format(self.owner, self.repo))
         url = 'https://api.github.com/repos/{}/{}/releases/latest'.format(self.owner, self.repo)
-        resp_json = github_api_get_json(url, option)
+        resp_json = github_api_get_json(url)
         tag_name = resp_json['tag_name']
         assets = resp_json['assets']
-        logger.info('{} asserts available in repo {}/{}'.format(len(assets), self.owner, self.repo))
+        logging.debug('{} assets available in repo {}/{} tag {}'.format(
+            len(assets), self.owner, self.repo, tag_name))
 
         ret_artifacts = []
         for asset in assets:
             asset_name = asset['name']
-            asset_url = asset['browser_download_url']
+            asset_url = asset['url']
             asset_size = asset['size']
             ret_artifacts.append(Artifact(asset_name, asset_url, asset_size))
 
         return Artifacts(tag_name, ret_artifacts)
-
-
-class APIOption:
-    def __init__(self):
-        self.basic_auth: Optional[str] = None
-        self.user_agent: Optional[str] = None
