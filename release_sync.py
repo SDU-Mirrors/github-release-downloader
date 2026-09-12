@@ -7,12 +7,14 @@ import os
 import pathlib
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple
 
 
 manifest_schema_version = 1
 hash_chunk_size = 1048576
+beijing_timezone = timezone(timedelta(hours=8))
+lastsync_header = 'repository | last_sync_at | version'
 
 
 @dataclass
@@ -88,6 +90,69 @@ def write_manifest_atomic(filepath: pathlib.Path, manifest: Dict[str, Any]):
         with temporary_path.open('x', encoding='utf-8', newline='\n') as stream:
             json.dump(manifest, stream, ensure_ascii=False, indent=2, sort_keys=True)
             stream.write('\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(str(temporary_path), str(filepath))
+    finally:
+        if temporary_path.exists():
+            temporary_path.unlink()
+
+
+def load_lastsync(filepath: pathlib.Path) -> Dict[str, Tuple[str, str]]:
+    """Load the latest successful sync time and tag for each repository."""
+    if not filepath.exists():
+        return {}
+
+    records = {}
+    try:
+        with filepath.open('r', encoding='utf-8') as stream:
+            for line_number, raw_line in enumerate(stream, 1):
+                line = raw_line.strip()
+                if not line:
+                    continue
+                if line.lower() == lastsync_header:
+                    continue
+
+                parts = [part.strip() for part in line.split(' | ', 2)]
+                if len(parts) != 3 or not all(parts):
+                    logging.warning('Ignoring invalid last sync record {}:{}: {}'.format(
+                        filepath, line_number, line))
+                    continue
+
+                repository, synced_at, tag_name = parts
+                try:
+                    parsed_time = datetime.fromisoformat(synced_at)
+                except ValueError:
+                    parsed_time = None
+                if parsed_time is None or parsed_time.utcoffset() is None:
+                    logging.warning('Ignoring last sync record with invalid timestamp {}:{}: {}'.format(
+                        filepath, line_number, line))
+                    continue
+
+                records[repository] = (synced_at, tag_name)
+    except (UnicodeDecodeError, OSError) as e:
+        logging.warning('Ignoring unreadable last sync file {}: {}'.format(filepath, e))
+        return {}
+
+    return records
+
+
+def beijing_now() -> str:
+    return datetime.now(beijing_timezone).isoformat()
+
+
+def write_lastsync_atomic(
+    filepath: pathlib.Path,
+    records: Iterable[Tuple[str, Tuple[str, str]]],
+):
+    """Atomically write ordered last-sync records as plain text."""
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = filepath.with_name('{}.{}.tmp'.format(filepath.name, uuid.uuid4().hex))
+    try:
+        with temporary_path.open('x', encoding='utf-8', newline='\n') as stream:
+            stream.write('{}\n'.format(lastsync_header))
+            for repository, (synced_at, tag_name) in records:
+                stream.write('{} | {} | {}\n'.format(repository, synced_at, tag_name))
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(str(temporary_path), str(filepath))

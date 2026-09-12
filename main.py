@@ -15,7 +15,10 @@ from release_sync import (
     load_manifest,
     manifests_match,
     sync_release_assets,
+    beijing_now,
     write_manifest_atomic,
+    load_lastsync,
+    write_lastsync_atomic,
 )
 
 
@@ -64,6 +67,10 @@ if __name__ == '__main__':
         except Exception as e:
             logging.warning('Skipping invalid repo entry {}: {}'.format(repo_str, format_exception(e)))
             continue
+
+    lastsync_path = pathlib.Path(current_dir) / 'lastsync.txt'
+    lastsync_records = load_lastsync(lastsync_path)
+    configured_repo_names = [str(repo) for repo in repos]
 
     print('{} repos are being tracked, as follows:'.format(len(repos)))
     for repo in repos:
@@ -132,6 +139,10 @@ if __name__ == '__main__':
             if not manifests_match(manifest, new_manifest):
                 write_manifest_atomic(manifest_path, new_manifest)
 
+            # A successful full processing run is a real sync, even when all
+            # assets were already present and unchanged.
+            lastsync_records[str(repo)] = (beijing_now(), artifacts.tag_name)
+
             logging.info(
                 'Release sync result: {} {} | added: {}, modified: {}, unchanged: {}, preserved: {}'.format(
                     repo,
@@ -161,3 +172,16 @@ if __name__ == '__main__':
     for failure in repos_failed:
         print('failed - {} | stage: {} | error: {}'.format(
             failure.repo, failure.stage, format_exception(failure.error)))
+
+    # Keep records for configured repositories only, in repos.yaml order. A
+    # failed repository retains its previous record, if one exists.
+    ordered_lastsync_records = [
+        (repo_name, lastsync_records[repo_name])
+        for repo_name in configured_repo_names
+        if repo_name in lastsync_records
+    ]
+    try:
+        write_lastsync_atomic(lastsync_path, ordered_lastsync_records)
+    except Exception as e:
+        logging.error('Failed to write last sync records {}: {}'.format(
+            lastsync_path, format_exception(e)))

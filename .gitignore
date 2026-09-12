@@ -113,6 +113,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# Local editor settings
+.vscode/
+
 # Spyder project settings
 .spyderproject
 .spyproject

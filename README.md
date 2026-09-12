@@ -28,6 +28,22 @@ Set the environment variable `HTTP_PROXY` to an HTTP proxy.
 
 Note: [A certain bug of Python](https://github.com/python/cpython/issues/66897) might cause issues with HTTP proxies, which was later fixed in Python 3.12.
 
+### Last sync status
+
+After each run, the downloader writes `lastsync.txt` under the `current` directory
+(for the default settings, `./srv/current/lastsync.txt`). Each line records the
+repository, the last successful sync time in Beijing time (UTC+08:00), and the
+latest release tag:
+
+```txt
+repository | last_sync_at | version
+texstudio-org/texstudio | 2026-09-12T16:00:00+08:00 | v4.8.1
+```
+
+The timestamp is updated after a repository finishes successfully, even when no
+asset changes were needed. Failed repositories keep their previous record, while
+repositories removed from `repos.yaml` are removed from the status file.
+
 ## License
 
 MIT
